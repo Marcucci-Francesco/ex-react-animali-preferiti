@@ -48,35 +48,71 @@
 
       const [show, setShow] = useState(false);
 
+      const [isLoading, setIsLoading] = useState(false);
+
       const [animalName, setAnimalName] = useState('');
 
-      const addAnimals = () => {
-        if (!animalName) return;
-        setAnimals(curr => [...curr, animalName]);
-        setAnimalName('')
-        setShow(false)
+      const addAnimals = async () => {
+        if (!animalName.trim()) return;
+        setIsLoading(true)
+        try {
+          const response = await fetch(`http://localhost:3333/animals?search=${animalName}`)
+          const [animalData] = await response.json();
+          if (!animalData) {
+            throw new Error('Nessun animale trovato')
+          }
+          const animal = {
+            name: animalData.name || 'Nome non trovato',
+            description: animalData.description || 'Descrizione non trovata',
+            image: animalData.image || null
+          }
+          setAnimals(curr => [...curr, animal])
+
+        } catch (err) {
+          console.log(err);
+          const message = err.message === 'Nessun animale trovato' ? 'Nessun animale trovato' : 'Errore durante la ricerca dell\'animale';
+          setErrorMessage(message);
+
+        } finally {
+          setIsLoading(false);
+          setAnimalName('');
+          setShow(false);
+        }
       }
       return (<>
         <button onClick={() => setShow(true)}>Aggiungi Animale</button>
         <details>
           <summary>Animali</summary>
-          <ul>
+          <div>
+            {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>}
             {animals.map((a, i) => (
-              <li key={i}>{a}</li>
+              <div key={i} className='card'>
+                <div>
+                  <h2>{a.name}</h2>
+                  <p>{a.description}</p>
+                </div>
+                {a.image &&
+                  <figure>
+                    <img src={a.image} alt={a.name} />
+                  </figure>
+                }
+              </div>
             ))}
-          </ul>
+          </div>
         </details>
         <Modal
           show={show}
           onClose={() => setShow(false)}
           onConfirm={addAnimals}
           title='Aggiungi Animale'
-          content={
+          content={<>
             <input
               type='text'
               value={animalName}
-              onChange={e => setAnimalName(e.target.value)} />
-          }
+              onChange={e => setAnimalName(e.target.value)}
+            />
+            {isLoading && <p>Caricando...</p>}
+          </>}
         />
       </>)
     }
